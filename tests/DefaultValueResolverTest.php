@@ -6,9 +6,9 @@ namespace Ruleink\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ValueResolver;
+use Ruleink\DefaultValueResolver;
 
-final class ValueResolverTest extends TestCase
+final class DefaultValueResolverTest extends TestCase
 {
     public static function subjects(): array
     {
@@ -29,12 +29,15 @@ final class ValueResolverTest extends TestCase
             'object property with null' => [$object, 'note', null],
             'object missing property' => [$object, 'stock', null],
             'object private property' => [$private, 'price', null],
+            'null subject' => [null, 'price', null],
+            'string subject' => ['price', 'price', null],
+            'int subject' => [10, 'price', null],
         ];
     }
 
     #[DataProvider('subjects')]
-    public function testResolve(array|object $subject, string $field, mixed $expected): void
+    public function testGet(mixed $subject, string $path, mixed $expected): void
     {
-        $this->assertSame($expected, (new ValueResolver())->resolve($subject, $field));
+        $this->assertSame($expected, (new DefaultValueResolver())->get($subject, $path));
     }
 }
