@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Ruleink;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
+use Exception;
 use InvalidArgumentException;
 
 final class Evaluator
@@ -37,6 +41,9 @@ final class Evaluator
 
         return match ($definition->operator) {
             'eq', 'gt', 'gte', 'lt', 'lte' => $this->compareNumber($definition, $expression, $subject),
+            'equals', 'contains' => $this->matchString($definition, $expression, $subject),
+            'is' => $this->matchBoolean($definition, $expression, $subject),
+            'before', 'after' => $this->compareDate($definition, $expression, $subject),
             default => throw new InvalidArgumentException("Unsupported operator [{$definition->operator}]."),
         };
     }
@@ -49,13 +56,135 @@ final class Evaluator
         $expected = $this->numericValue($expression);
         $actual = $this->resolver->get($subject, $definition->field);
 
-        // Checked first because PHP 8 compares a non-numeric string with a number as strings: 'abc' > 100.
+        // null, booleans and non-numeric strings never match a number expression.
         if (!is_numeric($actual)) {
             return false;
         }
 
         // compareNumbers() returns null for NAN, which no operator accepts.
         return in_array($this->compareNumbers($actual, $expected), self::ORDERINGS[$definition->operator], true);
+    }
+
+    /**
+     * Case-sensitive and byte-wise; only string values match.
+     */
+    private function matchString(
+        ExpressionDefinition $definition,
+        ConfiguredExpression $expression,
+        mixed $subject,
+    ): bool {
+        $expected = $expression->values['value'] ?? null;
+
+        if (!is_string($expected)) {
+            throw new InvalidArgumentException("Expression [{$expression->expression}] needs a string [value].");
+        }
+
+        $actual = $this->resolver->get($subject, $definition->field);
+
+        if (!is_string($actual)) {
+            return false;
+        }
+
+        return $definition->operator === 'equals' ? $actual === $expected : str_contains($actual, $expected);
+    }
+
+    private function matchBoolean(
+        ExpressionDefinition $definition,
+        ConfiguredExpression $expression,
+        mixed $subject,
+    ): bool {
+        $expected = $this->boolean($expression->values['value'] ?? null);
+
+        if ($expected === null) {
+            throw new InvalidArgumentException(
+                "Expression [{$expression->expression}] needs a boolean [value]: true, false, 1, 0, '1' or '0'.",
+            );
+        }
+
+        return $this->boolean($this->resolver->get($subject, $definition->field)) === $expected;
+    }
+
+    /**
+     * Databases often return booleans as 1/0 or '1'/'0'; anything else is not a boolean.
+     */
+    private function boolean(mixed $value): ?bool
+    {
+        return match (true) {
+            in_array($value, [true, 1, '1'], true) => true,
+            in_array($value, [false, 0, '0'], true) => false,
+            default => null,
+        };
+    }
+
+    /**
+     * Datetime fields compare instants. Date fields compare the calendar day as written,
+     * so 2026-10-08T00:00+08:00 is 8 October, not 7 October in UTC.
+     */
+    private function compareDate(
+        ExpressionDefinition $definition,
+        ConfiguredExpression $expression,
+        mixed $subject,
+    ): bool {
+        $expected = $this->dateTime($expression->values['value'] ?? null);
+
+        if ($expected === null) {
+            throw new InvalidArgumentException(
+                "Expression [{$expression->expression}] needs a DateTimeInterface or ISO 8601 date [value].",
+            );
+        }
+
+        $actual = $this->dateTime($this->resolver->get($subject, $definition->field));
+
+        if ($actual === null) {
+            return false;
+        }
+
+        $order = $definition->fieldType === FieldType::Date
+            ? $this->day($actual) <=> $this->day($expected)
+            : $actual <=> $expected;
+
+        return $order === ($definition->operator === 'before' ? -1 : 1);
+    }
+
+    /**
+     * Accepts a DateTimeInterface or a strict ISO 8601 string; strings without an offset are UTC.
+     * Relative strings like 'tomorrow' and impossible dates like 2026-02-30 are rejected.
+     */
+    private function dateTime(mixed $value): ?DateTimeInterface
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value;
+        }
+
+        // \z, not $: $ also matches before a trailing newline.
+        $pattern = '/^(\d{4})-(\d{2})-(\d{2})'
+            . '(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-](\d{2}):?(\d{2}))?)?\z/';
+
+        if (!is_string($value) || !preg_match($pattern, $value, $matches)) {
+            return null;
+        }
+
+        // RFC 3339 bounds: hours and offset hours 0-23, minutes and seconds 0-59.
+        $valid = checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])
+            && (int) ($matches[4] ?? 0) < 24
+            && (int) ($matches[5] ?? 0) < 60
+            && (int) ($matches[6] ?? 0) < 60
+            && (int) ($matches[7] ?? 0) < 24
+            && (int) ($matches[8] ?? 0) < 60;
+
+        try {
+            return $valid ? new DateTimeImmutable($value, new DateTimeZone('UTC')) : null;
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array{int, int, int} year, month, day; compared as ints so years past 9999 still order correctly
+     */
+    private function day(DateTimeInterface $date): array
+    {
+        return [(int) $date->format('Y'), (int) $date->format('n'), (int) $date->format('j')];
     }
 
     private function assertOperatorFitsFieldType(ExpressionDefinition $definition): void

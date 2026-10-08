@@ -207,17 +207,17 @@ final class EvaluatorTest extends TestCase
         );
     }
 
-    public function testUnsupportedOperatorThrows(): void
+    public function testOperatorOutsideTheCatalogueThrows(): void
     {
-        $definition = new ExpressionDefinition('name.equals', 'name', 'equals', FieldType::String, 'Name equals');
+        $definition = new ExpressionDefinition('price.between', 'price', 'between', FieldType::Number, '');
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Unsupported operator [equals].');
+        $this->expectExceptionMessage('Operator [between] does not support [number] fields.');
 
         (new Evaluator())->evaluate(
             $definition,
-            new ConfiguredExpression('name.equals', ['value' => 'x']),
-            ['name' => 'x'],
+            new ConfiguredExpression('price.between', ['value' => 100]),
+            ['price' => 150],
         );
     }
 
