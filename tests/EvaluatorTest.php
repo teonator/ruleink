@@ -207,6 +207,18 @@ final class EvaluatorTest extends TestCase
         );
     }
 
+    public function testExpressionWithoutAFieldThrows(): void
+    {
+        $definition = new ExpressionDefinition('product.is_expensive', null, 'is_expensive', null, '');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'Expression [product.is_expensive] has no field, so only its custom evaluator can evaluate it.',
+        );
+
+        (new Evaluator())->evaluate($definition, new ConfiguredExpression('product.is_expensive'), ['price' => 1]);
+    }
+
     public function testOperatorOutsideTheCatalogueThrows(): void
     {
         $definition = new ExpressionDefinition('price.between', 'price', 'between', FieldType::Number, '');

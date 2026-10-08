@@ -6,6 +6,7 @@ namespace Ruleink\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Ruleink\ExpressionDefinition;
 use Ruleink\ExpressionGenerator;
 use Ruleink\ExpressionRegistry;
 use Ruleink\Field;
@@ -41,6 +42,36 @@ final class ExpressionRegistryTest extends TestCase
         $registry->register(new Schema('empty', []));
 
         $this->assertSame([], $registry->expressionsFor('empty'));
+    }
+
+    public function testDefinitionLooksUpByKey(): void
+    {
+        $registry = new ExpressionRegistry();
+        $registry->register(ExpressionGeneratorTest::product());
+
+        $this->assertSame('Price is greater than', $registry->definition('product', 'price.gt')->label);
+    }
+
+    public function testUnknownKeyThrows(): void
+    {
+        $registry = new ExpressionRegistry();
+        $registry->register(ExpressionGeneratorTest::product());
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown expression [price.between] in schema [product].');
+
+        $registry->definition('product', 'price.between');
+    }
+
+    public function testAddedDefinitionsFollowGeneratedOnes(): void
+    {
+        $custom = new ExpressionDefinition('order.is_late', null, 'is_late', null, 'Order is late');
+        $registry = new ExpressionRegistry();
+        $registry->register(new Schema('order', [new Field('paid', FieldType::Boolean)]));
+        $registry->add('order', $custom);
+
+        $this->assertSame(['paid.is', 'order.is_late'], array_column($registry->expressionsFor('order'), 'key'));
+        $this->assertSame($custom, $registry->definition('order', 'order.is_late'));
     }
 
     public function testUnknownSchemaThrows(): void

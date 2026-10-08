@@ -189,6 +189,12 @@ final class Evaluator
 
     private function assertOperatorFitsFieldType(ExpressionDefinition $definition): void
     {
+        if ($definition->field === null || $definition->fieldType === null) {
+            throw new InvalidArgumentException(
+                "Expression [{$definition->key}] has no field, so only its custom evaluator can evaluate it.",
+            );
+        }
+
         if (!in_array($definition->operator, $definition->fieldType->operators(), true)) {
             throw new InvalidArgumentException(
                 "Operator [{$definition->operator}] does not support [{$definition->fieldType->value}] fields.",
