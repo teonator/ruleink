@@ -21,9 +21,55 @@ final class Evaluator
         'lte' => [-1, 0],
     ];
 
+    /** How each value type is described to authors when a value does not fit it. */
+    private const EXPECTED = [
+        'string' => 'a string',
+        'number' => 'a finite number',
+        'boolean' => "a boolean: true, false, 1, 0, '1' or '0'",
+        'date' => 'a DateTimeInterface or ISO 8601 date',
+        'datetime' => 'a DateTimeInterface or ISO 8601 date',
+    ];
+
     public function __construct(
         private ValueResolver $resolver = new DefaultValueResolver(),
     ) {
+    }
+
+    /**
+     * Checks values against the expression's declarations without evaluating anything.
+     *
+     * @param array<array-key, mixed> $values
+     * @return list<AuthorError> missing and mistyped values in declaration order, then unknown values in input order
+     */
+    public function validate(ExpressionDefinition $definition, array $values): array
+    {
+        $errors = [];
+        $declared = [];
+
+        foreach ($definition->values as $declaration) {
+            $declared[$declaration->name] = true;
+
+            if (!array_key_exists($declaration->name, $values)) {
+                if ($declaration->required) {
+                    $errors[] = new AuthorError("Missing value [{$declaration->name}].", $declaration->name);
+                }
+
+                continue;
+            }
+
+            if (!$this->fits($declaration->type, $values[$declaration->name])) {
+                $expected = self::EXPECTED[$declaration->type->value];
+                $errors[] = new AuthorError("Value [{$declaration->name}] must be {$expected}.", $declaration->name);
+            }
+        }
+
+        foreach (array_keys($values) as $name) {
+            if (!isset($declared[$name])) {
+                $errors[] = new AuthorError("Unknown value [{$name}].", (string) $name);
+            }
+        }
+
+        return $errors;
     }
 
     public function evaluate(
@@ -31,77 +77,77 @@ final class Evaluator
         ConfiguredExpression $expression,
         mixed $subject,
     ): bool {
-        if ($definition->key !== $expression->expression) {
+        if ($definition->key !== $expression->key) {
             throw new InvalidArgumentException(
-                "Configured expression [{$expression->expression}] does not match definition [{$definition->key}].",
+                "Configured expression [{$expression->key}] does not match definition [{$definition->key}].",
             );
         }
 
-        $this->assertOperatorFitsFieldType($definition);
+        $this->assertGenerated($definition);
+        $errors = $this->validate($definition, $expression->values);
+
+        if ($errors !== []) {
+            throw new InvalidConfiguredExpression($expression->key, $errors);
+        }
+
+        $expected = $expression->values['value'];
+        $actual = $this->resolver->get($subject, $definition->field);
 
         return match ($definition->operator) {
-            'eq', 'gt', 'gte', 'lt', 'lte' => $this->compareNumber($definition, $expression, $subject),
-            'equals', 'contains' => $this->matchString($definition, $expression, $subject),
-            'is' => $this->matchBoolean($definition, $expression, $subject),
-            'before', 'after' => $this->compareDate($definition, $expression, $subject),
+            'eq', 'gt', 'gte', 'lt', 'lte' => $this->compareNumber($definition->operator, $actual, $expected),
+            'equals', 'contains' => $this->matchString($definition->operator, $actual, $expected),
+            'is' => $this->boolean($actual) === $this->boolean($expected),
+            'before', 'after' => $this->compareDate($definition, $actual, $expected),
             default => throw new InvalidArgumentException("Unsupported operator [{$definition->operator}]."),
         };
     }
 
-    private function compareNumber(
-        ExpressionDefinition $definition,
-        ConfiguredExpression $expression,
-        mixed $subject,
-    ): bool {
-        $expected = $this->numericValue($expression);
-        $actual = $this->resolver->get($subject, $definition->field);
+    private function assertGenerated(ExpressionDefinition $definition): void
+    {
+        if ($definition->field === null || $definition->fieldType === null || $definition->operator === null) {
+            throw new InvalidArgumentException(
+                "Expression [{$definition->key}] is not generated, so only its custom evaluator can evaluate it.",
+            );
+        }
 
+        if (!in_array($definition->operator, $definition->fieldType->operators(), true)) {
+            throw new InvalidArgumentException(
+                "Operator [{$definition->operator}] does not support [{$definition->fieldType->value}] fields.",
+            );
+        }
+    }
+
+    private function fits(FieldType $type, mixed $value): bool
+    {
+        return match ($type) {
+            FieldType::String => is_string($value),
+            FieldType::Number => is_numeric($value) && !(is_float($value) && !is_finite($value)),
+            FieldType::Boolean => $this->boolean($value) !== null,
+            FieldType::Date, FieldType::DateTime => $this->dateTime($value) !== null,
+        };
+    }
+
+    private function compareNumber(string $operator, mixed $actual, int|float|string $expected): bool
+    {
         // null, booleans and non-numeric strings never match a number expression.
         if (!is_numeric($actual)) {
             return false;
         }
 
         // compareNumbers() returns null for NAN, which no operator accepts.
-        return in_array($this->compareNumbers($actual, $expected), self::ORDERINGS[$definition->operator], true);
+        return in_array($this->compareNumbers($actual, $expected), self::ORDERINGS[$operator], true);
     }
 
     /**
      * Case-sensitive and byte-wise; only string values match.
      */
-    private function matchString(
-        ExpressionDefinition $definition,
-        ConfiguredExpression $expression,
-        mixed $subject,
-    ): bool {
-        $expected = $expression->values['value'] ?? null;
-
-        if (!is_string($expected)) {
-            throw new InvalidArgumentException("Expression [{$expression->expression}] needs a string [value].");
-        }
-
-        $actual = $this->resolver->get($subject, $definition->field);
-
+    private function matchString(string $operator, mixed $actual, string $expected): bool
+    {
         if (!is_string($actual)) {
             return false;
         }
 
-        return $definition->operator === 'equals' ? $actual === $expected : str_contains($actual, $expected);
-    }
-
-    private function matchBoolean(
-        ExpressionDefinition $definition,
-        ConfiguredExpression $expression,
-        mixed $subject,
-    ): bool {
-        $expected = $this->boolean($expression->values['value'] ?? null);
-
-        if ($expected === null) {
-            throw new InvalidArgumentException(
-                "Expression [{$expression->expression}] needs a boolean [value]: true, false, 1, 0, '1' or '0'.",
-            );
-        }
-
-        return $this->boolean($this->resolver->get($subject, $definition->field)) === $expected;
+        return $operator === 'equals' ? $actual === $expected : str_contains($actual, $expected);
     }
 
     /**
@@ -120,22 +166,12 @@ final class Evaluator
      * Datetime fields compare instants. Date fields compare the calendar day as written,
      * so 2026-10-08T00:00+08:00 is 8 October, not 7 October in UTC.
      */
-    private function compareDate(
-        ExpressionDefinition $definition,
-        ConfiguredExpression $expression,
-        mixed $subject,
-    ): bool {
-        $expected = $this->dateTime($expression->values['value'] ?? null);
+    private function compareDate(ExpressionDefinition $definition, mixed $actual, mixed $expected): bool
+    {
+        $actual = $this->dateTime($actual);
+        $expected = $this->dateTime($expected);
 
-        if ($expected === null) {
-            throw new InvalidArgumentException(
-                "Expression [{$expression->expression}] needs a DateTimeInterface or ISO 8601 date [value].",
-            );
-        }
-
-        $actual = $this->dateTime($this->resolver->get($subject, $definition->field));
-
-        if ($actual === null) {
+        if ($actual === null || $expected === null) {
             return false;
         }
 
@@ -185,34 +221,6 @@ final class Evaluator
     private function day(DateTimeInterface $date): array
     {
         return [(int) $date->format('Y'), (int) $date->format('n'), (int) $date->format('j')];
-    }
-
-    private function assertOperatorFitsFieldType(ExpressionDefinition $definition): void
-    {
-        if ($definition->field === null || $definition->fieldType === null) {
-            throw new InvalidArgumentException(
-                "Expression [{$definition->key}] has no field, so only its custom evaluator can evaluate it.",
-            );
-        }
-
-        if (!in_array($definition->operator, $definition->fieldType->operators(), true)) {
-            throw new InvalidArgumentException(
-                "Operator [{$definition->operator}] does not support [{$definition->fieldType->value}] fields.",
-            );
-        }
-    }
-
-    private function numericValue(ConfiguredExpression $expression): int|float|string
-    {
-        $value = $expression->values['value'] ?? null;
-
-        if (!is_numeric($value) || (is_float($value) && !is_finite($value))) {
-            throw new InvalidArgumentException(
-                "Expression [{$expression->expression}] needs a finite numeric [value].",
-            );
-        }
-
-        return $value;
     }
 
     /**

@@ -30,13 +30,8 @@ final class ExpressionGenerator
             $label = ucfirst(str_replace('_', ' ', $field->name));
 
             foreach ($field->type->operators() as $operator) {
-                $definitions[] = new ExpressionDefinition(
-                    key: "{$field->name}.{$operator}",
-                    field: $field->name,
-                    operator: $operator,
-                    fieldType: $field->type,
-                    label: $label . ' ' . self::PHRASES[$operator],
-                );
+                $phrase = self::PHRASES[$operator];
+                $definitions[] = ExpressionDefinition::generated($field, $operator, "{$label} {$phrase}");
             }
         }
 

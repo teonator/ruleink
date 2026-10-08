@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Ruleink\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Ruleink\ExpressionDefinition;
 use Ruleink\ExpressionGenerator;
 use Ruleink\Field;
 use Ruleink\FieldType;
 use Ruleink\Schema;
+use Ruleink\ValueDeclaration;
 
 final class ExpressionGeneratorTest extends TestCase
 {
@@ -38,17 +38,16 @@ final class ExpressionGeneratorTest extends TestCase
     {
         $definitions = (new ExpressionGenerator())->generate(self::product());
 
-        $this->assertEquals(
-            new ExpressionDefinition(
-                key: 'price.gte',
-                field: 'price',
-                operator: 'gte',
-                fieldType: FieldType::Number,
-                label: 'Price is greater than or equal to',
-            ),
-            $definitions[4],
-        );
+        $gte = $definitions[4];
+
+        $this->assertSame('price.gte', $gte->key);
+        $this->assertSame('price', $gte->field);
+        $this->assertSame('gte', $gte->operator);
+        $this->assertSame(FieldType::Number, $gte->fieldType);
+        $this->assertSame('Price is greater than or equal to', $gte->label);
+        $this->assertEquals([new ValueDeclaration('value', FieldType::Number)], $gte->values);
         $this->assertSame('Released at is before', $definitions[8]->label);
+        $this->assertEquals([new ValueDeclaration('value', FieldType::DateTime)], $definitions[8]->values);
     }
 
     public function testDateFieldsGetTheDateCatalogue(): void

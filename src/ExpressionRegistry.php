@@ -43,12 +43,14 @@ final class ExpressionRegistry
         $this->definitions[$schema][$definition->key] = $definition;
     }
 
-    public function definition(string $schema, string $key): ExpressionDefinition
+    /**
+     * Returns null for an unknown key, which is an author error; an unknown schema is a developer error and throws.
+     */
+    public function find(string $schema, string $key): ?ExpressionDefinition
     {
         $this->assertRegistered($schema);
 
-        return $this->definitions[$schema][$key]
-            ?? throw new InvalidArgumentException("Unknown expression [{$key}] in schema [{$schema}].");
+        return $this->definitions[$schema][$key] ?? null;
     }
 
     /**

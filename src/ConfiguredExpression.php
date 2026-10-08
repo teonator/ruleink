@@ -10,7 +10,7 @@ final readonly class ConfiguredExpression
      * @param array<string, mixed> $values
      */
     public function __construct(
-        public string $expression,
+        public string $key,
         public array $values = [],
     ) {
     }

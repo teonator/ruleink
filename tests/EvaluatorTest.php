@@ -10,7 +10,9 @@ use PHPUnit\Framework\TestCase;
 use Ruleink\ConfiguredExpression;
 use Ruleink\Evaluator;
 use Ruleink\ExpressionDefinition;
+use Ruleink\Field;
 use Ruleink\FieldType;
+use Ruleink\InvalidConfiguredExpression;
 use Ruleink\ValueResolver;
 
 final class EvaluatorTest extends TestCase
@@ -19,12 +21,10 @@ final class EvaluatorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->priceGt = new ExpressionDefinition(
-            key: 'price.gt',
-            field: 'price',
-            operator: 'gt',
-            fieldType: FieldType::Number,
-            label: 'Price is greater than',
+        $this->priceGt = ExpressionDefinition::generated(
+            new Field('price', FieldType::Number),
+            'gt',
+            'Price is greater than',
         );
     }
 
@@ -145,7 +145,7 @@ final class EvaluatorTest extends TestCase
             }
         };
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidConfiguredExpression::class);
 
         (new Evaluator($resolver))->evaluate($this->priceGt, new ConfiguredExpression('price.gt'), ['price' => 150]);
     }
@@ -167,23 +167,23 @@ final class EvaluatorTest extends TestCase
     #[DataProvider('invalidThresholds')]
     public function testInvalidThresholdThrows(mixed $threshold): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Expression [price.gt] needs a finite numeric [value].');
+        $this->expectException(InvalidConfiguredExpression::class);
+        $this->expectExceptionMessage('[price.gt]: Value [value] must be a finite number.');
 
         $this->priceGreaterThan(['price' => 150], $threshold);
     }
 
     public function testMissingThresholdThrows(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Expression [price.gt] needs a finite numeric [value].');
+        $this->expectException(InvalidConfiguredExpression::class);
+        $this->expectExceptionMessage('Invalid configured expression [price.gt]: Missing value [value].');
 
         (new Evaluator())->evaluate($this->priceGt, new ConfiguredExpression('price.gt'), ['price' => 150]);
     }
 
     public function testNonNumberFieldThrows(): void
     {
-        $definition = new ExpressionDefinition('name.gt', 'name', 'gt', FieldType::String, 'Name is greater than');
+        $definition = ExpressionDefinition::generated(new Field('name', FieldType::String), 'gt', '');
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Operator [gt] does not support [string] fields.');
@@ -209,11 +209,11 @@ final class EvaluatorTest extends TestCase
 
     public function testExpressionWithoutAFieldThrows(): void
     {
-        $definition = new ExpressionDefinition('product.is_expensive', null, 'is_expensive', null, '');
+        $definition = ExpressionDefinition::custom('product.is_expensive', '');
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(
-            'Expression [product.is_expensive] has no field, so only its custom evaluator can evaluate it.',
+            'Expression [product.is_expensive] is not generated, so only its custom evaluator can evaluate it.',
         );
 
         (new Evaluator())->evaluate($definition, new ConfiguredExpression('product.is_expensive'), ['price' => 1]);
@@ -221,7 +221,7 @@ final class EvaluatorTest extends TestCase
 
     public function testOperatorOutsideTheCatalogueThrows(): void
     {
-        $definition = new ExpressionDefinition('price.between', 'price', 'between', FieldType::Number, '');
+        $definition = ExpressionDefinition::generated(new Field('price', FieldType::Number), 'between', '');
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Operator [between] does not support [number] fields.');
@@ -262,7 +262,7 @@ final class EvaluatorTest extends TestCase
     #[DataProvider('numberOperators')]
     public function testNumberOperators(string $operator, mixed $price, bool $expected): void
     {
-        $definition = new ExpressionDefinition("price.{$operator}", 'price', $operator, FieldType::Number, '');
+        $definition = ExpressionDefinition::generated(new Field('price', FieldType::Number), $operator, '');
 
         $result = (new Evaluator())->evaluate(
             $definition,

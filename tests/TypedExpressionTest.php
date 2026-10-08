@@ -7,13 +7,14 @@ namespace Ruleink\Tests;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
-use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ruleink\ConfiguredExpression;
 use Ruleink\Evaluator;
 use Ruleink\ExpressionDefinition;
+use Ruleink\Field;
 use Ruleink\FieldType;
+use Ruleink\InvalidConfiguredExpression;
 
 /**
  * String, boolean and date semantics. Database adapters must reproduce these exactly.
@@ -132,23 +133,23 @@ final class TypedExpressionTest extends TestCase
     public static function invalidValues(): array
     {
         return [
-            'string needs a string' => [FieldType::String, 'equals', 5, 'needs a string [value]'],
-            'string rejects null' => [FieldType::String, 'contains', null, 'needs a string [value]'],
-            'boolean rejects yes' => [FieldType::Boolean, 'is', 'yes', 'needs a boolean [value]'],
-            'boolean rejects string true' => [FieldType::Boolean, 'is', 'true', 'needs a boolean [value]'],
-            'boolean rejects null' => [FieldType::Boolean, 'is', null, 'needs a boolean [value]'],
-            'date rejects relative string' => [FieldType::DateTime, 'before', 'tomorrow', 'ISO 8601 date [value]'],
-            'date rejects impossible date' => [FieldType::Date, 'after', '2026-02-30', 'ISO 8601 date [value]'],
-            'date rejects timestamp' => [FieldType::DateTime, 'after', 1760000000, 'ISO 8601 date [value]'],
+            'string needs a string' => [FieldType::String, 'equals', 5, 'Value [value] must be a string.'],
+            'string rejects null' => [FieldType::String, 'contains', null, 'Value [value] must be a string.'],
+            'boolean rejects yes' => [FieldType::Boolean, 'is', 'yes', 'Value [value] must be a boolean'],
+            'boolean rejects string true' => [FieldType::Boolean, 'is', 'true', 'Value [value] must be a boolean'],
+            'boolean rejects null' => [FieldType::Boolean, 'is', null, 'Value [value] must be a boolean'],
+            'date rejects relative string' => [FieldType::DateTime, 'before', 'tomorrow', 'ISO 8601 date.'],
+            'date rejects impossible date' => [FieldType::Date, 'after', '2026-02-30', 'ISO 8601 date.'],
+            'date rejects timestamp' => [FieldType::DateTime, 'after', 1760000000, 'ISO 8601 date.'],
             'date rejects offset hour 24' => [FieldType::DateTime, 'after', '2026-10-08T12:00+24:59', 'ISO 8601'],
-            'date rejects trailing newline' => [FieldType::Date, 'after', "2026-10-08\n", 'ISO 8601 date [value]'],
+            'date rejects trailing newline' => [FieldType::Date, 'after', "2026-10-08\n", 'ISO 8601 date.'],
         ];
     }
 
     #[DataProvider('invalidValues')]
     public function testInvalidValueThrows(FieldType $type, string $operator, mixed $value, string $message): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidConfiguredExpression::class);
         $this->expectExceptionMessage($message);
 
         $this->evaluate($type, $operator, 'anything', $value);
@@ -157,7 +158,7 @@ final class TypedExpressionTest extends TestCase
     private function evaluate(FieldType $type, string $operator, mixed $actual, mixed $value): bool
     {
         return (new Evaluator())->evaluate(
-            new ExpressionDefinition("field.{$operator}", 'field', $operator, $type, ''),
+            ExpressionDefinition::generated(new Field('field', $type), $operator, ''),
             new ConfiguredExpression("field.{$operator}", ['value' => $value]),
             ['field' => $actual],
         );
