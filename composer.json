@@ -1,0 +1,36 @@
+{
+    "name": "teonator/ruleink",
+    "description": "A lightweight, framework-agnostic PHP rules engine for defining, generating, and evaluating reusable expressions.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["rules", "rules-engine", "expressions", "specification"],
+    "authors": [
+        {
+            "name": "Teon Ooi"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ruleink\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ruleink\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

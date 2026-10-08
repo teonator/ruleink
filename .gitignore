@@ -1,0 +1,15 @@
+/vendor/
+/composer.lock
+/.phpunit.cache/
+
+# AI assistant files
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.claude/
+.codex/
+.codegraph/
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
