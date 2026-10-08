@@ -209,16 +209,56 @@ final class EvaluatorTest extends TestCase
 
     public function testUnsupportedOperatorThrows(): void
     {
-        $definition = new ExpressionDefinition('price.lt', 'price', 'lt', FieldType::Number, 'Price is less than');
+        $definition = new ExpressionDefinition('name.equals', 'name', 'equals', FieldType::String, 'Name equals');
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Unsupported operator [lt].');
+        $this->expectExceptionMessage('Unsupported operator [equals].');
 
         (new Evaluator())->evaluate(
             $definition,
-            new ConfiguredExpression('price.lt', ['value' => 100]),
-            ['price' => 150],
+            new ConfiguredExpression('name.equals', ['value' => 'x']),
+            ['name' => 'x'],
         );
+    }
+
+    public static function numberOperators(): array
+    {
+        return [
+            'eq above' => ['eq', 150, false],
+            'eq equal' => ['eq', '100.0', true],
+            'eq below' => ['eq', 50, false],
+            'gte above' => ['gte', 150, true],
+            'gte equal' => ['gte', 100, true],
+            'gte below' => ['gte', 50, false],
+            'lt above' => ['lt', 150, false],
+            'lt equal' => ['lt', 100, false],
+            'lt below' => ['lt', 50, true],
+            'lte above' => ['lte', 150, false],
+            'lte equal' => ['lte', 100, true],
+            'lte below' => ['lte', 50, true],
+            'eq nan' => ['eq', NAN, false],
+            'gte nan' => ['gte', NAN, false],
+            'lt nan' => ['lt', NAN, false],
+            'lte nan' => ['lte', NAN, false],
+            'eq null' => ['eq', null, false],
+            'gte null' => ['gte', null, false],
+            'lt null' => ['lt', null, false],
+            'lte null' => ['lte', null, false],
+        ];
+    }
+
+    #[DataProvider('numberOperators')]
+    public function testNumberOperators(string $operator, mixed $price, bool $expected): void
+    {
+        $definition = new ExpressionDefinition("price.{$operator}", 'price', $operator, FieldType::Number, '');
+
+        $result = (new Evaluator())->evaluate(
+            $definition,
+            new ConfiguredExpression("price.{$operator}", ['value' => 100]),
+            ['price' => $price],
+        );
+
+        $this->assertSame($expected, $result);
     }
 
     private function priceGreaterThan(mixed $subject, mixed $threshold): bool

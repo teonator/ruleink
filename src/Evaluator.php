@@ -8,6 +8,15 @@ use InvalidArgumentException;
 
 final class Evaluator
 {
+    /** Number operators and the compareNumbers() results each one accepts. */
+    private const ORDERINGS = [
+        'eq' => [0],
+        'gt' => [1],
+        'gte' => [0, 1],
+        'lt' => [-1],
+        'lte' => [-1, 0],
+    ];
+
     public function __construct(
         private ValueResolver $resolver = new DefaultValueResolver(),
     ) {
@@ -24,28 +33,34 @@ final class Evaluator
             );
         }
 
+        $this->assertOperatorFitsFieldType($definition);
+
         return match ($definition->operator) {
-            'gt' => $this->greaterThan($definition, $expression, $subject),
+            'eq', 'gt', 'gte', 'lt', 'lte' => $this->compareNumber($definition, $expression, $subject),
             default => throw new InvalidArgumentException("Unsupported operator [{$definition->operator}]."),
         };
     }
 
-    private function greaterThan(
+    private function compareNumber(
         ExpressionDefinition $definition,
         ConfiguredExpression $expression,
         mixed $subject,
     ): bool {
-        $this->assertFieldType($definition, FieldType::Number);
         $expected = $this->numericValue($expression);
         $actual = $this->resolver->get($subject, $definition->field);
 
-        // PHP 8 compares a non-numeric string with a number as strings, so 'abc' > 100 would be true.
-        return is_numeric($actual) && $this->compareNumbers($actual, $expected) === 1;
+        // Checked first because PHP 8 compares a non-numeric string with a number as strings: 'abc' > 100.
+        if (!is_numeric($actual)) {
+            return false;
+        }
+
+        // compareNumbers() returns null for NAN, which no operator accepts.
+        return in_array($this->compareNumbers($actual, $expected), self::ORDERINGS[$definition->operator], true);
     }
 
-    private function assertFieldType(ExpressionDefinition $definition, FieldType $type): void
+    private function assertOperatorFitsFieldType(ExpressionDefinition $definition): void
     {
-        if ($definition->fieldType !== $type) {
+        if (!in_array($definition->operator, $definition->fieldType->operators(), true)) {
             throw new InvalidArgumentException(
                 "Operator [{$definition->operator}] does not support [{$definition->fieldType->value}] fields.",
             );

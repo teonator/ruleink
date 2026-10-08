@@ -29,6 +29,14 @@ final class Schema
             ?? throw new InvalidArgumentException("Unknown field [{$name}].");
     }
 
+    /**
+     * @return list<Field> in declaration order
+     */
+    public function fields(): array
+    {
+        return array_values($this->fields);
+    }
+
     private function add(Field $field): void
     {
         if (isset($this->fields[$field->name])) {
