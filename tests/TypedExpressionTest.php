@@ -121,6 +121,22 @@ final class TypedExpressionTest extends TestCase
         $this->assertSame($expected, $this->evaluate($type, $operator, $actual, $value));
     }
 
+    public function testNoOffsetMeansUtcWhateverTheDefaultTimezone(): void
+    {
+        $default = date_default_timezone_get();
+        date_default_timezone_set('Asia/Kuala_Lumpur');
+
+        try {
+            foreach (['before', 'after'] as $operator) {
+                $this->assertFalse(
+                    $this->evaluate(FieldType::DateTime, $operator, '2026-10-08 12:00:00', '2026-10-08T12:00:00Z'),
+                );
+            }
+        } finally {
+            date_default_timezone_set($default);
+        }
+    }
+
     public function testDateObjectIsNotModified(): void
     {
         $actual = new DateTime('2026-10-08 20:00:00', new DateTimeZone('Asia/Kuala_Lumpur'));

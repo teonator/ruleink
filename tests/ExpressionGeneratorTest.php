@@ -36,9 +36,9 @@ final class ExpressionGeneratorTest extends TestCase
 
     public function testDefinitionDescribesFieldOperatorAndLabel(): void
     {
-        $definitions = (new ExpressionGenerator())->generate(self::product());
+        $definitions = array_column((new ExpressionGenerator())->generate(self::product()), null, 'key');
 
-        $gte = $definitions[4];
+        $gte = $definitions['price.gte'];
 
         $this->assertSame('price.gte', $gte->key);
         $this->assertSame('price', $gte->field);
@@ -46,8 +46,11 @@ final class ExpressionGeneratorTest extends TestCase
         $this->assertSame(FieldType::Number, $gte->fieldType);
         $this->assertSame('Price is greater than or equal to', $gte->label);
         $this->assertEquals([new ValueDeclaration('value', FieldType::Number)], $gte->values);
-        $this->assertSame('Released at is before', $definitions[8]->label);
-        $this->assertEquals([new ValueDeclaration('value', FieldType::DateTime)], $definitions[8]->values);
+        $this->assertSame('Released at is before', $definitions['released_at.before']->label);
+        $this->assertEquals(
+            [new ValueDeclaration('value', FieldType::DateTime)],
+            $definitions['released_at.before']->values,
+        );
     }
 
     public function testDateFieldsGetTheDateCatalogue(): void

@@ -57,6 +57,20 @@ final class RuleinkTest extends TestCase
         $ruleink->evaluate('product', ['price' => 'free'], 'price.equals', ['value' => 'free']);
     }
 
+    public function testSameCustomKeyStaysWithinItsSchema(): void
+    {
+        $ruleink = $this->ruleink();
+        $ruleink->register(new Schema('order', [new Field('price', FieldType::Number)]));
+        $definition = ExpressionDefinition::custom('price.is_round', 'Price is round');
+        $ruleink->define('product', $definition, fn (mixed $subject, array $values): bool => true);
+        $ruleink->define('order', $definition, fn (mixed $subject, array $values): bool => false);
+
+        $this->assertTrue($ruleink->evaluate('product', [], 'price.is_round'));
+        $this->assertFalse($ruleink->evaluate('order', [], 'price.is_round'));
+        $this->assertSame([[]], $ruleink->apply('product', [[]], 'price.is_round'));
+        $this->assertSame([], $ruleink->apply('order', [[]], 'price.is_round'));
+    }
+
     public function testCustomExpressionIsListedAfterGeneratedOnes(): void
     {
         $ruleink = $this->ruleink();
@@ -137,6 +151,38 @@ final class RuleinkTest extends TestCase
             array_column($errors, 'message'),
         );
         $this->assertSame(['value', 'vlaue', 'extra'], array_column($errors, 'value'));
+    }
+
+    public function testValidateOrdersDeclaredValuesFirstThenUnknownOnesAsGiven(): void
+    {
+        $ruleink = $this->ruleink();
+        $ruleink->define(
+            'product',
+            ExpressionDefinition::custom('product.is_listed', 'Product is listed', [
+                new ValueDeclaration('since', FieldType::Date),
+                new ValueDeclaration('channel', FieldType::String),
+                new ValueDeclaration('featured', FieldType::Boolean, required: false),
+            ]),
+            fn (mixed $subject, array $values): bool => true,
+        );
+
+        $errors = $ruleink->validate(
+            'product',
+            'product.is_listed',
+            ['zone' => 'MY', 'featured' => 'yes', 'channel' => 5, 'tier' => 'gold'],
+        );
+
+        $this->assertSame(
+            [
+                'Missing value [since].',
+                'Value [channel] must be a string.',
+                "Value [featured] must be a boolean: true, false, 1, 0, '1' or '0'.",
+                'Unknown value [zone].',
+                'Unknown value [tier].',
+            ],
+            array_column($errors, 'message'),
+        );
+        $this->assertSame(['since', 'channel', 'featured', 'zone', 'tier'], array_column($errors, 'value'));
     }
 
     public function testValidateReportsAnUnknownKeyWithoutAValueName(): void

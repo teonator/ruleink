@@ -20,6 +20,14 @@ final class SchemaTest extends TestCase
         $this->assertSame('product', $schema->name);
     }
 
+    public function testFieldsAreAListInDeclarationOrder(): void
+    {
+        $title = new Field('title', FieldType::String);
+        $price = new Field('price', FieldType::Number);
+
+        $this->assertSame([$title, $price], (new Schema('product', [$title, $price]))->fields());
+    }
+
     public function testFieldReturnsFieldByName(): void
     {
         $price = new Field('price', FieldType::Number);
