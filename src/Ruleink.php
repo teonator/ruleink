@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ruleink;
 
 use InvalidArgumentException;
+use LogicException;
 use UnexpectedValueException;
 
 final class Ruleink
@@ -12,10 +13,19 @@ final class Ruleink
     /** @var array<string, array<string, callable(mixed, array<string, mixed>): bool>> schema => key => evaluator */
     private array $customEvaluators = [];
 
+    /** @var list<DatasourceAdapter> */
+    private array $adapters;
+
+    /**
+     * @param list<DatasourceAdapter> $adapters checked in order before the built-in iterable adapter;
+     *                                          the first that supports a datasource applies to it
+     */
     public function __construct(
         private ExpressionRegistry $registry = new ExpressionRegistry(),
         private Evaluator $evaluator = new Evaluator(),
+        array $adapters = [],
     ) {
+        $this->adapters = [...$adapters, new IterableDatasourceAdapter()];
     }
 
     public function register(Schema $schema): void
@@ -66,27 +76,39 @@ final class Ruleink
      */
     public function evaluate(string $schema, mixed $subject, string $key, array $values = []): bool
     {
-        [$definition, $errors] = $this->check($schema, $key, $values);
+        $definition = $this->definitionFor($schema, $key, $values);
 
-        if ($definition === null || $errors !== []) {
-            throw new InvalidConfiguredExpression($key, $errors, $schema);
-        }
+        return $this->matches($schema, $definition, new ConfiguredExpression($key, $values), $subject);
+    }
 
-        $custom = $this->customEvaluators[$schema][$key] ?? null;
+    /**
+     * Narrows a datasource to the subjects that match. The configured expression is checked now,
+     * even when the result is lazy; problems in individual subjects are just no match.
+     *
+     * @param array<array-key, mixed> $values
+     * @return mixed whatever the adapter returns: a narrowed array, a lazy iterable, a constrained query
+     * @throws InvalidConfiguredExpression for author errors; developer errors throw plain exceptions
+     */
+    public function apply(string $schema, mixed $datasource, string $key, array $values = []): mixed
+    {
+        $definition = $this->definitionFor($schema, $key, $values);
 
-        if ($custom === null) {
-            return $this->evaluator->evaluate($definition, new ConfiguredExpression($key, $values), $subject);
-        }
+        $adapter = $this->adapterFor($datasource);
 
-        $result = $custom($subject, $values);
-
-        if (!is_bool($result)) {
-            throw new UnexpectedValueException(
-                "Custom expression [{$key}] must return a bool, got " . get_debug_type($result) . '.',
+        if (!$adapter->canApply($definition)) {
+            throw new LogicException(
+                'Datasource adapter [' . $adapter::class . "] cannot apply expression [{$key}].",
             );
         }
 
-        return $result;
+        $expression = new ConfiguredExpression($key, $values);
+
+        return $adapter->apply(
+            $datasource,
+            $definition,
+            $expression,
+            fn (mixed $subject): bool => $this->matches($schema, $definition, $expression, $subject),
+        );
     }
 
     /**
@@ -102,5 +124,55 @@ final class Ruleink
         }
 
         return [$definition, $this->evaluator->validate($definition, $values)];
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     */
+    private function definitionFor(string $schema, string $key, array $values): ExpressionDefinition
+    {
+        [$definition, $errors] = $this->check($schema, $key, $values);
+
+        if ($definition === null || $errors !== []) {
+            throw new InvalidConfiguredExpression($key, $errors, $schema);
+        }
+
+        return $definition;
+    }
+
+    private function adapterFor(mixed $datasource): DatasourceAdapter
+    {
+        foreach ($this->adapters as $adapter) {
+            if ($adapter->supports($datasource)) {
+                return $adapter;
+            }
+        }
+
+        throw new InvalidArgumentException(
+            'No datasource adapter supports ' . get_debug_type($datasource) . '.',
+        );
+    }
+
+    private function matches(
+        string $schema,
+        ExpressionDefinition $definition,
+        ConfiguredExpression $expression,
+        mixed $subject,
+    ): bool {
+        $custom = $this->customEvaluators[$schema][$expression->key] ?? null;
+
+        if ($custom === null) {
+            return $this->evaluator->evaluate($definition, $expression, $subject);
+        }
+
+        $result = $custom($subject, $expression->values);
+
+        if (!is_bool($result)) {
+            throw new UnexpectedValueException(
+                "Custom expression [{$expression->key}] must return a bool, got " . get_debug_type($result) . '.',
+            );
+        }
+
+        return $result;
     }
 }
