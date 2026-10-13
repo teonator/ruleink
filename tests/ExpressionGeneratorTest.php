@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Ruleink\ExpressionGenerator;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\Schema;
-use Ruleink\ValueDeclaration;
+use RuleInk\ExpressionGenerator;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\Schema;
+use RuleInk\ValueDeclaration;
 
 final class ExpressionGeneratorTest extends TestCase
 {

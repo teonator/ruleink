@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Ruleink;
+namespace RuleInk;
 
 use Closure;
 use Generator;

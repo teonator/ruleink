@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Ruleink;
+namespace RuleInk;
 
 /**
  * Applies configured expressions to one kind of datasource. In-memory adapters call $matches; query adapters
@@ -13,7 +13,7 @@ interface DatasourceAdapter
     public function supports(mixed $datasource): bool;
 
     /**
-     * False makes Ruleink::apply() throw for this datasource; Ruleink does not try the next adapter.
+     * False makes RuleInk::apply() throw for this datasource; RuleInk does not try the next adapter.
      */
     public function canApply(ExpressionDefinition $definition): bool;
 

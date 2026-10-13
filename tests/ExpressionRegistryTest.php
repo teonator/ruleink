@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ExpressionDefinition;
-use Ruleink\ExpressionGenerator;
-use Ruleink\ExpressionRegistry;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\Schema;
+use RuleInk\ExpressionDefinition;
+use RuleInk\ExpressionGenerator;
+use RuleInk\ExpressionRegistry;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\Schema;
 
 final class ExpressionRegistryTest extends TestCase
 {

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Ruleink\DefaultValueResolver;
+use RuleInk\DefaultValueResolver;
 
 final class DefaultValueResolverTest extends TestCase
 {

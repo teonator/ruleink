@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Ruleink;
+namespace RuleInk;
 
 use InvalidArgumentException;
 use LogicException;
 use UnexpectedValueException;
 
-final class Ruleink
+final class RuleInk
 {
     /** @var array<string, array<string, callable(mixed, array<string, mixed>): bool>> schema => key => evaluator */
     private array $customEvaluators = [];

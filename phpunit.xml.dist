@@ -8,7 +8,7 @@
          failOnRisky="true"
          failOnWarning="true">
     <testsuites>
-        <testsuite name="Ruleink">
+        <testsuite name="RuleInk">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

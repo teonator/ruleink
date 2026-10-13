@@ -1,4 +1,4 @@
-# Ruleink
+# RuleInk
 
 A lightweight, framework-agnostic PHP rules engine for defining, generating, and evaluating reusable expressions.
 

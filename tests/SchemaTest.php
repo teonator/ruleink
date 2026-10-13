@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\Schema;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\Schema;
 use TypeError;
 
 final class SchemaTest extends TestCase

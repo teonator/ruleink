@@ -17,12 +17,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Ruleink\\": "src/"
+            "RuleInk\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Ruleink\\Tests\\": "tests/"
+            "RuleInk\\Tests\\": "tests/"
         }
     },
     "scripts": {

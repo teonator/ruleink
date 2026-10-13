@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use ArrayIterator;
 use DateTimeImmutable;
@@ -11,13 +11,13 @@ use InvalidArgumentException;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ConfiguredExpression;
-use Ruleink\DatasourceAdapter;
-use Ruleink\ExpressionDefinition;
-use Ruleink\FieldType;
-use Ruleink\InvalidConfiguredExpression;
-use Ruleink\Ruleink;
-use Ruleink\ValueDeclaration;
+use RuleInk\ConfiguredExpression;
+use RuleInk\DatasourceAdapter;
+use RuleInk\ExpressionDefinition;
+use RuleInk\FieldType;
+use RuleInk\InvalidConfiguredExpression;
+use RuleInk\RuleInk;
+use RuleInk\ValueDeclaration;
 use Traversable;
 use UnexpectedValueException;
 
@@ -147,7 +147,7 @@ final class ApplyTest extends TestCase
         $unsupported = $this->adapter(supports: false);
         $first = $this->adapter(result: 'first');
         $second = $this->adapter(result: 'second');
-        $ruleink = new Ruleink(adapters: [$unsupported, $first, $second]);
+        $ruleink = new RuleInk(adapters: [$unsupported, $first, $second]);
         $ruleink->register(ExpressionGeneratorTest::product());
 
         $this->assertSame('first', $ruleink->apply('product', [], 'price.gt', ['value' => 100]));
@@ -158,7 +158,7 @@ final class ApplyTest extends TestCase
     public function testAdapterReceivesTheDatasourceExpressionAndAMatchCheck(): void
     {
         $adapter = $this->adapter();
-        $ruleink = new Ruleink(adapters: [$adapter]);
+        $ruleink = new RuleInk(adapters: [$adapter]);
         $ruleink->register(ExpressionGeneratorTest::product());
         $datasource = [['price' => 150]];
 
@@ -176,7 +176,7 @@ final class ApplyTest extends TestCase
     public function testAdapterThatCannotApplyTheExpressionThrows(): void
     {
         $adapter = $this->adapter(canApply: false);
-        $ruleink = new Ruleink(adapters: [$adapter]);
+        $ruleink = new RuleInk(adapters: [$adapter]);
         $ruleink->register(ExpressionGeneratorTest::product());
 
         $this->expectException(LogicException::class);
@@ -255,9 +255,9 @@ final class ApplyTest extends TestCase
         ];
     }
 
-    private function ruleink(): Ruleink
+    private function ruleink(): RuleInk
     {
-        $ruleink = new Ruleink();
+        $ruleink = new RuleInk();
         $ruleink->register(ExpressionGeneratorTest::product());
 
         return $ruleink;

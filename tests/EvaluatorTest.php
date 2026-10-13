@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ConfiguredExpression;
-use Ruleink\Evaluator;
-use Ruleink\ExpressionDefinition;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\InvalidConfiguredExpression;
-use Ruleink\ValueResolver;
+use RuleInk\ConfiguredExpression;
+use RuleInk\Evaluator;
+use RuleInk\ExpressionDefinition;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\InvalidConfiguredExpression;
+use RuleInk\ValueResolver;
 
 final class EvaluatorTest extends TestCase
 {

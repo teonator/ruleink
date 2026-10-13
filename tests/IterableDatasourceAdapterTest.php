@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use ArrayIterator;
 use Generator;
 use InvalidArgumentException;
 use IteratorAggregate;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ConfiguredExpression;
-use Ruleink\ExpressionDefinition;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\IterableDatasourceAdapter;
+use RuleInk\ConfiguredExpression;
+use RuleInk\ExpressionDefinition;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\IterableDatasourceAdapter;
 use Traversable;
 
 final class IterableDatasourceAdapterTest extends TestCase

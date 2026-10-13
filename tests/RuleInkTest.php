@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Ruleink\Tests;
+namespace RuleInk\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use Ruleink\ExpressionDefinition;
-use Ruleink\Field;
-use Ruleink\FieldType;
-use Ruleink\InvalidConfiguredExpression;
-use Ruleink\Ruleink;
-use Ruleink\Schema;
-use Ruleink\ValueDeclaration;
+use RuleInk\ExpressionDefinition;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\InvalidConfiguredExpression;
+use RuleInk\RuleInk;
+use RuleInk\Schema;
+use RuleInk\ValueDeclaration;
 use UnexpectedValueException;
 
-final class RuleinkTest extends TestCase
+final class RuleInkTest extends TestCase
 {
     public function testExpressionsForProduct(): void
     {
@@ -123,7 +123,7 @@ final class RuleinkTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Unknown schema [product].');
 
-        (new Ruleink())->define('product', $this->isExpensive(), fn (mixed $subject, array $values): bool => true);
+        (new RuleInk())->define('product', $this->isExpensive(), fn (mixed $subject, array $values): bool => true);
     }
 
     public function testUnknownSchemaThrows(): void
@@ -134,9 +134,9 @@ final class RuleinkTest extends TestCase
         $this->ruleink()->evaluate('order', [], 'price.gt', ['value' => 1]);
     }
 
-    private function ruleink(): Ruleink
+    private function ruleink(): RuleInk
     {
-        $ruleink = new Ruleink();
+        $ruleink = new RuleInk();
         $ruleink->register(ExpressionGeneratorTest::product());
 
         return $ruleink;
