@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace RuleInk;
 
-use DateTimeImmutable;
 use DateTimeInterface;
-use DateTimeZone;
-use Exception;
 use InvalidArgumentException;
 
 final class Evaluator
@@ -32,6 +29,7 @@ final class Evaluator
 
     public function __construct(
         private ValueResolver $resolver = new DefaultValueResolver(),
+        private ValueReader $reader = new ValueReader(),
     ) {
     }
 
@@ -96,7 +94,7 @@ final class Evaluator
         return match ($definition->operator) {
             'eq', 'gt', 'gte', 'lt', 'lte' => $this->compareNumber($definition->operator, $actual, $expected),
             'equals', 'contains' => $this->matchString($definition->operator, $actual, $expected),
-            'is' => $this->boolean($actual) === $this->boolean($expected),
+            'is' => $this->reader->boolean($actual) === $this->reader->boolean($expected),
             'before', 'after' => $this->compareDate($definition, $actual, $expected),
             default => throw new InvalidArgumentException("Unsupported operator [{$definition->operator}]."),
         };
@@ -122,8 +120,8 @@ final class Evaluator
         return match ($type) {
             FieldType::String => is_string($value),
             FieldType::Number => is_numeric($value) && !(is_float($value) && !is_finite($value)),
-            FieldType::Boolean => $this->boolean($value) !== null,
-            FieldType::Date, FieldType::DateTime => $this->dateTime($value) !== null,
+            FieldType::Boolean => $this->reader->boolean($value) !== null,
+            FieldType::Date, FieldType::DateTime => $this->reader->dateTime($value) !== null,
         };
     }
 
@@ -151,25 +149,13 @@ final class Evaluator
     }
 
     /**
-     * Databases often return booleans as 1/0 or '1'/'0'; anything else is not a boolean.
-     */
-    private function boolean(mixed $value): ?bool
-    {
-        return match (true) {
-            in_array($value, [true, 1, '1'], true) => true,
-            in_array($value, [false, 0, '0'], true) => false,
-            default => null,
-        };
-    }
-
-    /**
      * Datetime fields compare instants. Date fields compare the calendar day as written,
      * so 2026-10-08T00:00+08:00 is 8 October, not 7 October in UTC.
      */
     private function compareDate(ExpressionDefinition $definition, mixed $actual, mixed $expected): bool
     {
-        $actual = $this->dateTime($actual);
-        $expected = $this->dateTime($expected);
+        $actual = $this->reader->dateTime($actual);
+        $expected = $this->reader->dateTime($expected);
 
         if ($actual === null || $expected === null) {
             return false;
@@ -180,39 +166,6 @@ final class Evaluator
             : $actual <=> $expected;
 
         return $order === ($definition->operator === 'before' ? -1 : 1);
-    }
-
-    /**
-     * Accepts a DateTimeInterface or a strict ISO 8601 string; strings without an offset are UTC.
-     * Relative strings like 'tomorrow' and impossible dates like 2026-02-30 are rejected.
-     */
-    private function dateTime(mixed $value): ?DateTimeInterface
-    {
-        if ($value instanceof DateTimeInterface) {
-            return $value;
-        }
-
-        // \z, not $: $ also matches before a trailing newline.
-        $pattern = '/^(\d{4})-(\d{2})-(\d{2})'
-            . '(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-](\d{2}):?(\d{2}))?)?\z/';
-
-        if (!is_string($value) || !preg_match($pattern, $value, $matches)) {
-            return null;
-        }
-
-        // RFC 3339 bounds: hours and offset hours 0-23, minutes and seconds 0-59.
-        $valid = checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])
-            && (int) ($matches[4] ?? 0) < 24
-            && (int) ($matches[5] ?? 0) < 60
-            && (int) ($matches[6] ?? 0) < 60
-            && (int) ($matches[7] ?? 0) < 24
-            && (int) ($matches[8] ?? 0) < 60;
-
-        try {
-            return $valid ? new DateTimeImmutable($value, new DateTimeZone('UTC')) : null;
-        } catch (Exception) {
-            return null;
-        }
     }
 
     /**
@@ -269,7 +222,7 @@ final class Evaluator
                 return [$number > 0 ? 1 : -1, null, ''];
             }
 
-            $number = $this->shortestDecimal($number);
+            $number = (string) $this->reader->decimal($number);
         }
 
         if (!preg_match('/^\s*([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?\s*$/', (string) $number, $matches)) {
@@ -332,19 +285,5 @@ final class Evaluator
         $b = ltrim($b, '-');
 
         return $signA * (strlen($a) <=> strlen($b) ?: strcmp($a, $b) <=> 0);
-    }
-
-    private function shortestDecimal(float $number): string
-    {
-        // %h is %g without the locale's decimal comma.
-        for ($precision = 1; $precision < 17; $precision++) {
-            $decimal = sprintf("%.{$precision}h", $number);
-
-            if ((float) $decimal === $number) {
-                return $decimal;
-            }
-        }
-
-        return sprintf('%.17h', $number);
     }
 }

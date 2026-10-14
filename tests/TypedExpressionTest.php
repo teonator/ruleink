@@ -15,6 +15,7 @@ use RuleInk\ExpressionDefinition;
 use RuleInk\Field;
 use RuleInk\FieldType;
 use RuleInk\InvalidConfiguredExpression;
+use RuleInk\ValueReader;
 
 /**
  * String, boolean and date semantics. Database adapters must reproduce these exactly.
@@ -134,6 +135,20 @@ final class TypedExpressionTest extends TestCase
             }
         } finally {
             date_default_timezone_set($default);
+        }
+    }
+
+    public function testNoOffsetMeansTheTimezoneTheEvaluatorIsGiven(): void
+    {
+        $evaluator = new Evaluator(reader: new ValueReader(new DateTimeZone('Asia/Kuala_Lumpur')));
+        $subject = ['field' => '2026-10-08 20:00:00'];
+
+        foreach (['before', 'after'] as $operator) {
+            $this->assertFalse($evaluator->evaluate(
+                ExpressionDefinition::generated(new Field('field', FieldType::DateTime), $operator, ''),
+                new ConfiguredExpression("field.{$operator}", ['value' => '2026-10-08T12:00:00Z']),
+                $subject,
+            ));
         }
     }
 
