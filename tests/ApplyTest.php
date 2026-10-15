@@ -8,9 +8,9 @@ use ArrayIterator;
 use DateTimeImmutable;
 use Generator;
 use InvalidArgumentException;
-use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuleInk\ApplyRefused;
 use RuleInk\ConfiguredExpression;
 use RuleInk\DatasourceAdapter;
 use RuleInk\ExpressionDefinition;
@@ -179,14 +179,16 @@ final class ApplyTest extends TestCase
         $ruleink = new RuleInk(adapters: [$adapter]);
         $ruleink->register(ExpressionGeneratorTest::product());
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('cannot apply expression [price.gt].');
-
         try {
             $ruleink->apply('product', [], 'price.gt', ['value' => 1]);
-        } finally {
-            $this->assertNull($adapter->applied);
+            $this->fail('Expected ApplyRefused.');
+        } catch (ApplyRefused $refused) {
+            $this->assertSame('price.gt', $refused->key);
+            $this->assertSame($adapter::class, $refused->adapter);
+            $this->assertStringEndsWith('cannot apply expression [price.gt].', $refused->getMessage());
         }
+
+        $this->assertNull($adapter->applied);
     }
 
     public function testCustomExpressionReturningANonBoolThrowsWhileLooping(): void

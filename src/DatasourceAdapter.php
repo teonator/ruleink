@@ -13,7 +13,7 @@ interface DatasourceAdapter
     public function supports(mixed $datasource): bool;
 
     /**
-     * False makes RuleInk::apply() throw for this datasource; RuleInk does not try the next adapter.
+     * False makes RuleInk::apply() throw ApplyRefused for this datasource; RuleInk does not try the next adapter.
      */
     public function canApply(ExpressionDefinition $definition): bool;
 
@@ -21,6 +21,7 @@ interface DatasourceAdapter
      * Narrows the datasource to matching subjects without forcing a query to run.
      *
      * @param callable(mixed $subject): bool $matches evaluates one subject; query adapters may ignore it
+     * @throws ApplyRefused when it cannot keep exactly the subjects $matches would keep, even for these values
      */
     public function apply(
         mixed $datasource,

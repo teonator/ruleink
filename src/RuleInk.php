@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace RuleInk;
 
 use InvalidArgumentException;
-use LogicException;
 use UnexpectedValueException;
 
 final class RuleInk
@@ -88,6 +87,7 @@ final class RuleInk
      * @param array<array-key, mixed> $values
      * @return mixed whatever the adapter returns: a narrowed array, a lazy iterable, a constrained query
      * @throws InvalidConfiguredExpression for author errors; developer errors throw plain exceptions
+     * @throws ApplyRefused when the adapter cannot apply this configured expression to this datasource
      */
     public function apply(string $schema, mixed $datasource, string $key, array $values = []): mixed
     {
@@ -96,7 +96,9 @@ final class RuleInk
         $adapter = $this->adapterFor($datasource);
 
         if (!$adapter->canApply($definition)) {
-            throw new LogicException(
+            throw new ApplyRefused(
+                $key,
+                $adapter::class,
                 'Datasource adapter [' . $adapter::class . "] cannot apply expression [{$key}].",
             );
         }
