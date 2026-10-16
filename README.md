@@ -1,6 +1,6 @@
 # RuleInk
 
-A lightweight, framework-agnostic PHP rules engine for defining, generating, and evaluating reusable expressions.
+A lightweight, framework-agnostic PHP rules engine that turns field metadata into reusable expressions you can evaluate against one subject or apply to a datasource.
 
 ## Requirements
 

@@ -205,7 +205,7 @@ final class ApplyTest extends TestCase
     }
 
     /**
-     * Applying must keep exactly the subjects that evaluate() matches. Query adapters will reuse this.
+     * Applying must keep exactly the subjects that evaluate() matches.
      *
      * @param array<string, mixed> $values
      */

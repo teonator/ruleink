@@ -6,7 +6,8 @@ namespace RuleInk;
 
 /**
  * Applies configured expressions to one kind of datasource. In-memory adapters call $matches; query adapters
- * ignore it, translate the definition instead, and use canApply() to reject what they cannot translate.
+ * ignore it, translate the definition instead, and refuse what they cannot translate through canApply() or by
+ * throwing ApplyRefused.
  */
 interface DatasourceAdapter
 {
@@ -21,7 +22,7 @@ interface DatasourceAdapter
      * Narrows the datasource to matching subjects without forcing a query to run.
      *
      * @param callable(mixed $subject): bool $matches evaluates one subject; query adapters may ignore it
-     * @throws ApplyRefused when it cannot keep exactly the subjects $matches would keep, even for these values
+     * @throws ApplyRefused when it cannot keep exactly the subjects $matches would keep; this may depend on the values
      */
     public function apply(
         mixed $datasource,

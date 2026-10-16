@@ -10,8 +10,8 @@ use DateTimeZone;
 use Exception;
 
 /**
- * How expressions read booleans and dates. The Evaluator and database adapters share it, so a query reads a value
- * the same way evaluate() does.
+ * How expressions read booleans, dates and numbers. The Evaluator and database adapters share it, so a query reads
+ * a value the same way evaluate() does.
  */
 final class ValueReader
 {

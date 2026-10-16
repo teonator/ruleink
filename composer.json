@@ -1,6 +1,6 @@
 {
     "name": "teonator/ruleink",
-    "description": "A lightweight, framework-agnostic PHP rules engine for defining, generating, and evaluating reusable expressions.",
+    "description": "A lightweight, framework-agnostic PHP rules engine that turns field metadata into reusable expressions you can evaluate against one subject or apply to a datasource.",
     "type": "library",
     "license": "MIT",
     "keywords": ["rules", "rules-engine", "expressions", "specification"],
